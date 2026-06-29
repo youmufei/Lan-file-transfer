@@ -84,12 +84,11 @@ LAN Transfer 是一个基于 **局域网（Wi-Fi）** 的轻量级文件传输�
 
 
 ### 🖼️ 截图预览
-电脑端界面
-![电脑端界面](<img width="1894" height="825" alt="pc" src="https://github.com/user-attachments/assets/4f60e036-1e6a-4bcf-913c-b4075199f040" />)
+#### 电脑端界面
+![电脑端界面](https://github.com/user-attachments/assets/4f60e036-1e6a-4bcf-913c-b4075199f040)
 
-手机端界面
-![手机端界面](<img width="1125" height="2058" alt="mobile1" src="https://github.com/user-attachments/assets/6a523dd0-1337-4710-a0e5-b08555ea6d85" />)
-
+#### 手机端界面
+![手机端界面](https://github.com/user-attachments/assets/6a523dd0-1337-4710-a0e5-b08555ea6d85)
 
 ### 🔐 安全与隐私
 1. 所有传输仅在 局域网内 进行，数据不经过任何公网服务器。
