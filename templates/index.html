@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <!-- iOS Web App -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="局域网传输">
+    <!-- Theme color -->
+    <meta name="theme-color" content="#ffffff">
+    <title>局域网传输 — {{ room_id }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-left">
+            <h1>📡 局域网传输</h1>
+        </div>
+        <div class="header-center">
+            <span class="room-badge" id="roomBadge">房间号: <strong>{{ room_id }}</strong></span>
+        </div>
+        <div class="header-right">
+            <!-- PIN Toggle -->
+            <label class="pin-toggle" id="pinToggleLabel" title="PIN 码保护">
+                <input type="checkbox" id="pinToggle" autocomplete="off">
+                <span class="pin-toggle-slider"></span>
+                <span class="pin-toggle-text">PIN</span>
+            </label>
+            <span id="pinDisplay" class="pin-display hidden"></span>
+            <!-- Info button (mobile only) -->
+            <button id="mobileInfoBtn" class="btn-icon" title="连接信息">ℹ️</button>
+            <span id="connectionStatus" class="status-dot offline" title="连接状态"></span>
+            <span id="statusText">检测中...</span>
+        </div>
+    </header>
+
+    <main class="main-container" id="mainContainer">
+        <!-- LEFT COLUMN: Upload -->
+        <section class="panel panel-upload active" id="panelUpload">
+            <h2>📤 上传到电脑</h2>
+
+            <!-- File Upload -->
+            <div class="card">
+                <h3>📎 发送文件</h3>
+                <div class="drop-zone" id="dropZone">
+                    <p>拖拽文件至此</p>
+                    <p class="sub">或点击选择文件</p>
+                    <input type="file" id="fileInput" multiple hidden>
+                    <!-- Mobile: also support capture -->
+                    <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
+                </div>
+                <div id="uploadProgress" class="upload-progress hidden">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p id="progressText"></p>
+                </div>
+                <!-- Mobile quick actions -->
+                <div class="mobile-action-bar" id="mobileFileActions">
+                    <button id="cameraBtn" class="btn btn-secondary">📷 拍照</button>
+                    <button id="selectFileBtn" class="btn btn-secondary">📁 选择文件</button>
+                </div>
+            </div>
+
+            <!-- Text/Link Upload -->
+            <div class="card">
+                <h3>💬 发送文字 / 链接</h3>
+                <textarea id="textInput" rows="3" placeholder="输入文字或粘贴链接..."></textarea>
+                <div class="card-actions">
+                    <button id="sendTextBtn" class="btn btn-primary">发送</button>
+                    <button id="pasteBtn" class="btn btn-secondary">📋 粘贴剪贴板</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT COLUMN: Browse & Connect -->
+        <section class="panel panel-browse" id="panelBrowse">
+            <h2>📥 浏览与下载</h2>
+
+            <!-- Tabs (desktop: 4 tabs, mobile: 2 tabs visible) -->
+            <div class="tabs" id="desktopTabs">
+                <button class="tab active" data-tab="files">📎 文件</button>
+                <button class="tab" data-tab="texts">💬 文字与链接</button>
+                <button class="tab desktop-only-tab" data-tab="connect">📱 连接信息</button>
+                <button class="tab desktop-only-tab" data-tab="push">📡 推送到手机</button>
+            </div>
+
+            <!-- Files List -->
+            <div class="tab-content active" id="filesTab">
+                <div id="filesList" class="item-list">
+                    <p class="empty-state">暂无文件，请上传吧！</p>
+                </div>
+            </div>
+
+            <!-- Texts List -->
+            <div class="tab-content" id="textsTab">
+                <div id="textsList" class="item-list">
+                    <p class="empty-state">暂无内容，发送点什么吧！</p>
+                </div>
+            </div>
+
+            <!-- Connect Tab (desktop: QR + info + PIN) -->
+            <div class="tab-content" id="connectTab">
+                <div class="connect-card">
+                    <h3>📱 扫码连接</h3>
+                    <p class="connect-hint">打开手机相机或扫码工具扫描此码</p>
+                    <div class="qr-wrapper">
+                        <img id="qrImage"
+                             src="/api/qrcode?size=10"
+                             alt="扫码连接"
+                             class="qr-code">
+                    </div>
+                    <div class="connect-info">
+                        <div class="info-row">
+                            <span class="info-label">🔑 房间号</span>
+                            <span class="info-value" id="infoRoomId">{{ room_id }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">🌐 访问地址</span>
+                            <span class="info-value" id="infoUrl">{{ url }}</span>
+                        </div>
+                        <div class="info-row" id="pinInfoRow" style="display:none;">
+                            <span class="info-label">🔐 PIN 码</span>
+                            <span class="info-value" id="infoPin">••••</span>
+                        </div>
+                    </div>
+                    <button id="revealPinBtn" class="btn btn-outline full-width hidden" style="margin-bottom:8px;">👁 显示 PIN</button>
+                    <div class="btn-sticky-bottom">
+                        <button id="copyUrlBtn" class="btn btn-primary full-width">📋 复制链接地址</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Push Tab (PC → Mobile) -->
+            <div class="tab-content" id="pushTab">
+                <div class="push-panel">
+                    <p class="push-hint">🚀 从此电脑推送文字或文件到已连接的手机。推送内容会出现在「文件」和「文字与链接」标签页中。</p>
+
+                    <!-- Push Text -->
+                    <div class="card">
+                        <h3>💬 推送文字 / 链接到手机</h3>
+                        <textarea id="pushTextInput" rows="3" placeholder="输入要推送的文字或链接..."></textarea>
+                        <div class="card-actions">
+                            <button id="sendPushTextBtn" class="btn btn-primary">📡 推送文字</button>
+                            <button id="pastePushBtn" class="btn btn-secondary">📋 粘贴</button>
+                        </div>
+                    </div>
+
+                    <!-- Push File -->
+                    <div class="card">
+                        <h3>📎 推送文件到手机</h3>
+                        <div class="drop-zone" id="pushDropZone">
+                            <p>拖拽文件至此以推送</p>
+                            <p class="sub">或点击选择文件</p>
+                            <input type="file" id="pushFileInput" multiple hidden>
+                        </div>
+                        <div id="pushUploadProgress" class="upload-progress hidden">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="pushProgressFill"></div>
+                            </div>
+                            <p id="pushProgressText"></p>
+                        </div>
+                    </div>
+
+                    <!-- Push History -->
+                    <div class="card">
+                        <h3>📋 最近推送记录</h3>
+                        <div id="pushHistoryList" class="item-list">
+                            <p class="empty-state">暂无推送记录。推送点什么到手机吧！</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Refresh Button (desktop only, mobile has bottom nav) -->
+            <button id="refreshBtn" class="btn btn-outline full-width">🔄 刷新列表</button>
+        </section>
+    </main>
+
+    <!-- Bottom Navigation (mobile only, 3 buttons) -->
+    <nav class="bottom-nav" id="bottomNav">
+        <button class="bottom-nav-btn active" data-panel="upload">
+            <span class="nav-icon">📤</span>
+            <span>发送</span>
+        </button>
+        <button class="bottom-nav-btn" data-panel="browse">
+            <span class="nav-icon">📥</span>
+            <span>浏览</span>
+        </button>
+        <button class="bottom-nav-btn" id="mobileRefreshBtn">
+            <span class="nav-icon">🔄</span>
+            <span>刷新</span>
+        </button>
+    </nav>
+
+    <!-- Mobile Info Modal -->
+    <div class="modal-overlay hidden" id="infoModal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📱 连接信息</h3>
+                <button class="modal-close" id="closeInfoModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="qr-wrapper">
+                    <img src="/api/qrcode?size=8"
+                         alt="扫码连接"
+                         class="qr-code">
+                </div>
+                <p class="connect-hint">打开手机相机或扫码工具扫描此码</p>
+                <div class="connect-info">
+                    <div class="info-row">
+                        <span class="info-label">🔑 房间号</span>
+                        <span class="info-value" id="modalRoomId">{{ room_id }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">🌐 访问地址</span>
+                        <span class="info-value" id="modalUrl">{{ url }}</span>
+                    </div>
+                </div>
+                <button id="modalCopyUrlBtn" class="btn btn-primary full-width">📋 复制链接地址</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>🔒 所有数据仅保存在本地局域网，不上传云端。房间号: {{ room_id }} | <span id="footerIp">{{ local_ip }}:{{ port }}</span></p>
+    </footer>
+
+    <!-- PIN Verification Modal (mobile) -->
+    <div class="modal-overlay hidden" id="pinVerifyModal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content pin-modal">
+            <div class="modal-header">
+                <h3>🔐 输入 PIN 码</h3>
+            </div>
+            <div class="modal-body">
+                <p class="pin-hint">此房间已启用 PIN 码保护，请输入 4 位数字密码</p>
+                <input type="text" id="pinVerifyInput" class="pin-input"
+                       inputmode="numeric" pattern="[0-9]*" maxlength="4"
+                       autocomplete="one-time-code"
+                       placeholder="0000">
+                <div id="pinVerifyError" class="pin-error hidden">PIN 码错误，请重试</div>
+                <button id="pinVerifyBtn" class="btn btn-primary full-width">验证</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
